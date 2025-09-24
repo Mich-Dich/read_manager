@@ -18,6 +18,31 @@ typedef int16_t     i16;  					// 16-bit signed integer
 typedef int32_t     i32;  					// 32-bit signed integer
 typedef int64_t     i64;  					// 64-bit signed integer
 
+// 128-bit integer types (compiler-specific extensions)
+#if defined(__SIZEOF_INT128__) || (defined(__clang__) && defined(__x86_64__))   // GCC, Clang, and compatible compilers
+
+  typedef unsigned __int128   u128; // 128-bit unsigned integer
+  typedef __int128            i128; // 128-bit signed integer
+
+#elif defined(_MSC_VER)       // Microsoft Visual C++
+
+  #include <immintrin.h>
+  typedef __int128 i128;
+  typedef unsigned __int128 u128;
+
+#else                         // Fallback: use a struct to emulate 128-bit integers
+  typedef struct {
+    i64 high;
+    u64 low;
+  } i128;
+  
+  typedef struct {
+    u64 high;
+    u64 low;
+  } u128;
+#endif
+
+
 typedef float       f32;			      // 32-bit floating point
 typedef double      f64;			      // 64-bit floating point
 typedef long double f128;   				// 128-bit floating point (platform dependent)
@@ -27,6 +52,14 @@ typedef int         b32;            // 32-bit bool (often used as flag)
 
 typedef u64 handle;  				        // Generic handle type for OS resources
 
+
+#define TYPE_FORMAT(x) _Generic((x),                                  \
+    i8: "%" PRId8, i16: "%" PRId16, i32: "%" PRId32, i64: "%" PRId64, \
+    u8: "%" PRIu8, u16: "%" PRIu16, u32: "%" PRIu32, u64: "%" PRIu64, \
+    f32: "%f", f64: "%f", f128: "%Lf",                                \
+    b8: "%d", char*: "%s", const char*: "%s",                         \
+    default: "%p"                                                     \
+)
 
 
 // portable static assert for C11 and fallback 
@@ -63,7 +96,6 @@ STATIC_ASSERT(sizeof(b32) == 4,   "Expected [b32] to be 4 byte");
 #define CONFIG_DIR              	"config"        // Directory for configuration files
 #define CONTENT_DIR             	"content"       // Directory for content files
 #define SOURCE_DIR              	"src"           // Directory for source code
-// #define ASSET_DIR                   util_get_executable_path() / "assets"
 
 
 

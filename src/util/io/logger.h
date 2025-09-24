@@ -39,8 +39,7 @@ b8 logger_init(const char* log_msg_format, const b8 log_to_console, const char* 
 //        Flushes any pending log messages, closes log files,
 //        and cleans up resources. For multi-threaded applications,
 //        stops the background logging thread.
-// @return True if shutdown completed successfully
-b8 logger_shutdown();
+void logger_shutdown();
 
 
 // @brief Internal function to log a message with specified severity and context.

@@ -97,42 +97,13 @@ system_time get_system_time() {
 // executable path
 // ------------------------------------------------------------------------------------------------------------------
 
-static char executable_path[PATH_MAX] = {0};
-
-
-const char* get_executable_path() {
-    if (executable_path[0] != '\0') {
-        return executable_path;
-    }
-
-    char path[PATH_MAX];
-    ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
-    if (len == -1) {
-        perror("readlink");
-        return NULL;
-    }
-    path[len] = '\0';
-
-    char path_copy[PATH_MAX];
-    strncpy(path_copy, path, sizeof(path_copy) - 1);
-    path_copy[sizeof(path_copy) - 1] = '\0';
-
-    char* dir = dirname(path_copy);
-    if (dir != NULL) {
-        strncpy(executable_path, dir, sizeof(executable_path) - 1);
-        executable_path[sizeof(executable_path) - 1] = '\0';
-    }
-
-    return executable_path;
-}
-
 
 int get_executable_path_buf(char *out, size_t outlen) {
 
     char path[PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
     if (len == -1)
-        return -1;
+        return AT_IO_ERROR;
 
     path[len] = '\0';
     char tmp[PATH_MAX];
@@ -140,11 +111,11 @@ int get_executable_path_buf(char *out, size_t outlen) {
     tmp[sizeof(tmp)-1] = '\0';
     char *d = dirname(tmp);
     if (!d)
-        return -1;
+        return AT_FORMAT_ERROR;
         
     strncpy(out, d, outlen);
     out[outlen-1] = '\0';
-    return 0;
+    return AT_SUCCESS;
 }
 
 
@@ -230,6 +201,7 @@ b8 system_ensure_file_exists(const char* file_path) {
     int fd = open(file_path, O_RDONLY);
     if (fd >= 0) {      // file already exists
         close(fd);
+        return false;
 
     } else {
         if (errno == ENOENT) {
@@ -237,9 +209,12 @@ b8 system_ensure_file_exists(const char* file_path) {
             int create_fd = open(file_path, O_CREAT | O_EXCL | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH); // 0644
             if (create_fd >= 0) {
                 close(create_fd);                                       // created an empty file
+                return true;
+
             } else {
                 if (errno == EEXIST) {
                     // race: somebody created it concurrently — treat as success
+                    return true;
 
                 } else {
                     LOG(Error, "failed to create file %s: %s\n", file_path, strerror(errno));

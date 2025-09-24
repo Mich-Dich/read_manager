@@ -87,9 +87,10 @@ b8 application_init(__attribute_maybe_unused__ int argc, __attribute_maybe_unuse
 
     do {        // load app settings
     
-        const char* exec_path = get_executable_path();
+        char exec_path[PATH_MAX] = {0};
+        get_executable_path_buf(exec_path, sizeof(exec_path));
 
-        char loc_file_path[PATH_MAX];
+        char loc_file_path[PATH_MAX] = {0};
         memset(loc_file_path, '\0', sizeof(loc_file_path));
         const int written = snprintf(loc_file_path, sizeof(loc_file_path), "%s/%s", exec_path, "config");
         VALIDATE(written >= 0 && (size_t)written < sizeof(loc_file_path), return false, "", "Path too long: %s/%s\n", exec_path, "config");

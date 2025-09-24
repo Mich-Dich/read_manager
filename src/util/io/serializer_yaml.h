@@ -2,6 +2,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "util/data_structure/data_types.h"
 #include "util/data_structure/dynamic_string.h"
@@ -27,28 +28,22 @@ typedef struct {
 } SY;
 
 
-#define KEY_VALUE(variable)         util_extract_variable_name(#variable), &variable
-#define KEY_VALUE_TYPE(variable)    KEY_VALUE(variable), TYPE_FORMAT(variable)
+#define S_KEY(variable)                 util_extract_variable_name(#variable)
+#define S_KEY_VALUE(variable)           S_KEY(variable), &variable
+#define S_VALUE_FORMAT(variable)        &variable, TYPE_FORMAT(variable)
+#define S_KEY_VALUE_FORMAT(variable)    S_KEY_VALUE(variable), TYPE_FORMAT(variable)
+
 
 // Core functions
 b8 sy_init(SY* serializer, const char* dir_path, const char* file_name, const char* section_name, const serializer_option option);
 void sy_shutdown(SY* sy);
 
-// Entry functions for different types
-// Need value as pointer because value will be overwritten when option = LOAD
-
-void sy_entry_int(SY* serializer, const char* key, int* value);
-void sy_entry_f32(SY* serializer, const char* key, f32* value);
-void sy_entry_b32(SY* serializer, const char* key, b32* value);
+void sy_entry(SY* serializer, const char* key, void* value, const char* format);    // Generic, user needs to define the format for the values
 void sy_entry_str(SY* serializer, const char* key, char* value, size_t buffer_size);
-
-// Generic version, user needs to define how he want to save the values
-void sy_entry(SY* serializer, const char* key, void* value, const char* format);
 
 // Subsection function
 void sy_subsection_begin(SY* serializer, const char* name);
 void sy_subsection_end(SY* serializer);
-
 
 typedef bool (*sy_loop_callback_t)(SY* serializer, void* element);
 typedef i32 (*sy_loop_callback_at_t)(void* data_structure, const u64 index, void* element);

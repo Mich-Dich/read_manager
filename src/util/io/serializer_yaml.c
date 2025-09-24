@@ -61,7 +61,6 @@ u32 get_indentation(const char *line) {
     return count;
 }
 
-
 // will get a char array like his: [char line[STR_LINE_LEN]]
 u32 get_indentation_reverse(const char *line) {
 
@@ -77,7 +76,6 @@ u32 get_indentation_reverse(const char *line) {
 
     return -(count +1);
 }
-
 
 //
 const char* skip_indentation(const char* line) {
@@ -370,19 +368,56 @@ typedef struct {
 
 // ================================= set value =================================
 
-    // Handle different format types
-#define FORMAT_VALUE(value_to_use)                                                                                                 \
-    if (strcmp(format, "%d") == 0)          snprintf(value_str, sizeof(value_str), format, *(int*)value_to_use);                   \
-    else if (strcmp(format, "%u") == 0)     snprintf(value_str, sizeof(value_str), format, *(unsigned int*)value_to_use);          \
-    else if (strcmp(format, "%ld") == 0)    snprintf(value_str, sizeof(value_str), format, *(long*)value_to_use);                  \
-    else if (strcmp(format, "%lu") == 0)    snprintf(value_str, sizeof(value_str), format, *(unsigned long*)value_to_use);         \
-    else if (strcmp(format, "%lld") == 0)   snprintf(value_str, sizeof(value_str), format, *(long long*)value_to_use);             \
-    else if (strcmp(format, "%llu") == 0)   snprintf(value_str, sizeof(value_str), format, *(unsigned long long*)value_to_use);    \
-    else if (strcmp(format, "%f") == 0)     snprintf(value_str, sizeof(value_str), format, *(float*)value_to_use);                 \
-    else if (strcmp(format, "%lf") == 0)    snprintf(value_str, sizeof(value_str), format, *(double*)value_to_use);                \
-    else if (strcmp(format, "%Lf") == 0)    snprintf(value_str, sizeof(value_str), format, *(long double*)value_to_use);           \
-    else if (strcmp(format, "%s") == 0)     snprintf(value_str, sizeof(value_str), format, (char*)value_to_use);                   \
-    else                                    snprintf(value_str, sizeof(value_str), format, *(handle*)value_to_use);
+// Helper macro to extract the format specifier from complex format strings
+#define EXTRACT_SPECIFIER(fmt)  \
+    (strchr(fmt, 'd') ? 'd' :   \
+     strchr(fmt, 'u') ? 'u' :   \
+     strchr(fmt, 'f') ? 'f' :   \
+     strchr(fmt, 's') ? 's' :   \
+     'p')  // default
+
+// handles both simple and PRI macros
+#define FORMAT_VALUE(value_to_use)                                                                          \
+    do {                                                                                                    \
+        char specifier = EXTRACT_SPECIFIER(format);                                                         \
+        switch (specifier) {                                                                                \
+            case 'd':                                                                                       \
+                if (strstr(format, "lld") || strstr(format, PRId64))                                        \
+                    snprintf(value_str, sizeof(value_str), format, *(long long*)value_to_use);              \
+                else if (strstr(format, "ld") || strstr(format, PRId32))                                    \
+                    snprintf(value_str, sizeof(value_str), format, *(long*)value_to_use);                   \
+                else if (strstr(format, "d") || strstr(format, PRId16) || strstr(format, PRId8))            \
+                    snprintf(value_str, sizeof(value_str), format, *(int*)value_to_use);                    \
+                else                                                                                        \
+                    snprintf(value_str, sizeof(value_str), format, *(int*)value_to_use);                    \
+                break;                                                                                      \
+            case 'u':                                                                                       \
+                if (strstr(format, "llu") || strstr(format, PRIu64))                                        \
+                    snprintf(value_str, sizeof(value_str), format, *(unsigned long long*)value_to_use);     \
+                else if (strstr(format, "lu") || strstr(format, PRIu32))                                    \
+                    snprintf(value_str, sizeof(value_str), format, *(unsigned long*)value_to_use);          \
+                else if (strstr(format, "u") || strstr(format, PRIu16) || strstr(format, PRIu8))            \
+                    snprintf(value_str, sizeof(value_str), format, *(unsigned int*)value_to_use);           \
+                else                                                                                        \
+                    snprintf(value_str, sizeof(value_str), format, *(unsigned int*)value_to_use);           \
+                break;                                                                                      \
+            case 'f':                                                                                       \
+                if (strstr(format, "Lf"))                                                                   \
+                    snprintf(value_str, sizeof(value_str), format, *(long double*)value_to_use);            \
+                else if (strstr(format, "lf"))                                                              \
+                    snprintf(value_str, sizeof(value_str), format, *(double*)value_to_use);                 \
+                else                                                                                        \
+                    snprintf(value_str, sizeof(value_str), format, *(float*)value_to_use);                  \
+                break;                                                                                      \
+            case 's':                                                                                       \
+                snprintf(value_str, sizeof(value_str), format, (char*)value_to_use);                        \
+                break;                                                                                      \
+            default:                                                                                        \
+                snprintf(value_str, sizeof(value_str), format, *(handle*)value_to_use);                     \
+                break;                                                                                      \
+        }                                                                                                   \
+    } while (0)
+
 
 // 
 b8 set_value_callback(const char* line, size_t len, void *user_data) {
@@ -419,7 +454,7 @@ b8 set_value_callback(const char* line, size_t len, void *user_data) {
 }
 
 // tries to find a line containing the key, if found it will update the value, if not it will append a new line at the end
-b8 set_value(SY* serializer, const char* key, const char* format, void* value) {
+b8 set_value(SY* serializer, const char* key, void* value, const char* format) {
     
     if (!serializer || !key || !format || !value) return false;
 
@@ -485,7 +520,7 @@ b8 get_value_callback(const char* line, size_t len, void *user_data) {
 }
 
 // tries to find a line containing the key, if found it will return true and set [char* line] to the line containing the key
-b8 get_value(SY* serializer, const char* key, const char* format, handle* value) {
+b8 get_value(SY* serializer, const char* key, handle* value, const char* format) {
 
     if (!serializer || !key || !format || !value) return false;
 
@@ -604,17 +639,13 @@ void sy_subsection_end(SY* serializer) {
 // serializer entry functions
 // ============================================================================================================================================
 
-#define PARSE_VALUE(format)                                                                                     \
-    if (serializer->option == SERIALIZER_OPTION_SAVE)   set_value(serializer, key, format, (void*)value);       \
-    else                                                get_value(serializer, key, format, (void*)value);
+void sy_entry(SY* serializer, const char* key, void* value, const char* format)     { 
+    if (serializer->option == SERIALIZER_OPTION_SAVE)
+        set_value(serializer, key, (void*)value, format);
+    else                                                
+        get_value(serializer, key, (void*)value, format);
+}
 
-void sy_entry(SY* serializer, const char* key, void* value, const char* format)     { PARSE_VALUE(format) }
-
-void sy_entry_int(SY* serializer, const char* key, int* value)                        { PARSE_VALUE("%d") }
-
-void sy_entry_f32(SY* serializer, const char* key, f32* value)                        { PARSE_VALUE("%f") }
-
-void sy_entry_b32(SY* serializer, const char* key, b32* value)                        { PARSE_VALUE("%u") }
 
 void sy_entry_str(SY* serializer, const char* key, char* value, size_t buffer_size)   {
 
@@ -622,47 +653,128 @@ void sy_entry_str(SY* serializer, const char* key, char* value, size_t buffer_si
         set_value(serializer, key, "%s", (void*)value);
     } else {
         char temp[STR_LINE_LEN] = {0};
-        if (get_value(serializer, key, "%[^\n]", (handle*)&temp)) {
+        if (get_value(serializer, key, (handle*)&temp, "%[^\n]")) {
             strncpy(value, temp, buffer_size);
             value[buffer_size - 1] = '\0'; // Ensure null termination
         }
     }
 }
 
-#undef PARSE_VALUE
-
 
 void sy_loop(SY* serializer, const char* name, void* data_structure, size_t element_size, sy_loop_callback_t callback, sy_loop_callback_at_t accessor, sy_loop_callback_append_t append, sy_loop_DS_size_callback_t data_structure_size) {
     
-    // TODO: try to find the section containing [name]
+    sy_subsection_begin(serializer, name);
+    // ASSERT(strlen(name) < STR_SEC_LEN, "", "Provided section name is to long [%s] may size [%u]", name, STR_SEC_LEN)
+    // if (serializer->option == SERIALIZER_OPTION_SAVE)           // dump old content to file
+    //     save_section(serializer);
 
+    // stack_push(&serializer->section_headers, name);
+    // serializer->current_indentation++;
+    
     if (serializer->option == SERIALIZER_OPTION_SAVE) {
+
+        FILE* loc_serializer_file = serializer->fp;
+        dyn_str loop_content = {0};
 
         const size_t DS_size = data_structure_size(data_structure);
         for (u64 x = 0; x < DS_size; x++) {
-
-            // TODO: load content of current element in to section_content if available
 
             void* local_buffer = NULL;
             const i32 result = accessor(data_structure, x, local_buffer);
             VALIDATE(result == AT_SUCCESS && local_buffer, return, "", "Failed to access element at [%d] result [%s]", x, error_to_str(result))
             callback(serializer, local_buffer);
 
-            // TODO: save section_content to file
+            ds_append_str(&loop_content, serializer->section_content.data);
         }
+
+        ds_clear(&serializer->section_content);
+        ds_append_str(&serializer->section_content, loop_content.data);
+
+        // save buffer to file
+        save_section(serializer);
+
         return;
     }
 
+
     // only loading from here
     void* local_buffer = malloc(element_size);
-    // while ( --- ) {  // TODO: iterate as long as elements are in file
+    FILE* loc_serializer_file = serializer->fp;
 
-        // TODO: load content of current element in to section_content
-    
+    // search for header while respecting the hierarchy in [serializer->section_headers]
+    char line[STR_LINE_LEN] = {0};
+    b8 found_section = true;                                // if hierarchy is not violated this will remain true
+    const size_t number_of_headers = stack_size(&serializer->section_headers);
+    LOG(Trace, "number_of_headers %zu", number_of_headers)
+    for (size_t x = 0; x < number_of_headers; x++) {
+        
+        char current_header[STR_SEC_LEN] = {0};
+        stack_peek_at(&serializer->section_headers, x, &current_header);
+        LOG(Trace, "searching for [%s]", current_header)
+
+        while (fgets(line, sizeof(line), loc_serializer_file)) {
+
+            LOG(Trace, "current line [%s]", line)
+            const u32 indent = get_indentation(line);
+            if (indent < x) {                               // left header hierarchy
+                found_section = false;                      // hierarchy violated -> still needs to search for subsections
+                goto break_search;
+            }
+
+            //  current header                  correct indentation (going deeper in)
+            if (strstr(line, current_header) && indent == x)
+                break;      // exit search loop -> found header        continue FOR to search for next header
+        }
+    }
+    break_search:
+    VALIDATE(found_section, , "", "could not find section ")
+
+
+    bool element_found_in_file = false;
+    while(element_found_in_file) {
+
         memset(local_buffer, 0, element_size);
         callback(serializer, local_buffer);
         append(data_structure, local_buffer);           // append new element to back
-    // }
 
+        bool element_found_in_file = false;
+        do {                                                                    // load content of current element in to section_content if available
+            // reset string
+            ds_free(&serializer->section_content);
+            ds_init(&serializer->section_content);
+
+            if (fgets(line, sizeof(line), loc_serializer_file)) {               // get next line and see if part of data_structure
+                size_t i = 0;
+                while (line[i] == ' ' || line[i] == '\t')
+                    i++;
+                element_found_in_file = (get_indentation(line) == serializer->current_indentation -1) &&
+                                        (line[i] == '-' && (line[i + 1]) == ' ');
+            }
+            if (!element_found_in_file) break;
+
+            // Prepare regex to match key-value lines
+            static const char *pattern = "^[ \t]*[A-Za-z0-9_-]+:[ \t]*[^ \t\n]+.*$";
+            regex_t regex;
+            VALIDATE(!regcomp(&regex, pattern, REG_EXTENDED), break, "", "Regex compilation failed")
+            
+            while (fgets(line, sizeof(line), loc_serializer_file)) {            // pars all lines that come after
+
+                const u32 indent = get_indentation(line);
+                if (indent < serializer->current_indentation) break;            // stop when section ends
+                if (indent > serializer->current_indentation) continue;         // skip any potential subsection
+
+                // check if line looks like this using regex:      <leading indentation><string>: <string>
+                if (regexec(&regex, line, 0, NULL, 0) == 0)
+                    ds_append_str(&serializer->section_content, skip_indentation(line));
+            }
+            regfree(&regex); // Don't forget to free the regex
+
+            char current_header[STR_SEC_LEN] = {0};
+            stack_peek(&serializer->section_headers, &current_header);
+            LOG(Info, "current_header [%s] serializer->section_content: \n%s", current_header, serializer->section_content.data)
+
+        } while (0);
+
+    }
+    
 }
-

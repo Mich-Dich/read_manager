@@ -9,6 +9,7 @@
 #include <ucontext.h>
 #include <errno.h>
 #include <dlfcn.h>
+#include <limits.h>
 
 #include "util/data_structure/dynamic_string.h"
 #include "util/data_structure/unordered_map.h"
@@ -163,7 +164,8 @@ static void crash_handler(int sig, siginfo_t* info, void* ucontext) {
         case SIGBUS:  sig_name = "SIGBUS (Bus Error)"; break;
     }
 
-    const char* exe_path = get_executable_path();
+    char exe_path[PATH_MAX] = {0};
+    get_executable_path_buf(exe_path, sizeof(exe_path));
     
     dyn_str crash_msg;
     ds_init(&crash_msg);

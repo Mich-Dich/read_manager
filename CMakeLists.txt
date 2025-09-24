@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 # Project name and language - enable both C and CXX
-project(application_template_c LANGUAGES C CXX)
+project(read_manager LANGUAGES C CXX)
 
 # Use C11 by default
 set(CMAKE_C_STANDARD 11)

@@ -40,12 +40,6 @@ void precise_sleep(const f64 seconds);
 system_time get_system_time();
 
 
-// @brief Retrieves the absolute path to the directory where the current executable resides.
-//        Uses `/proc/self/exe` on Linux to resolve the executable path and extracts its directory.
-// @return Returns a pointer to a static null-terminated string containing the executable's directory.
-//         Returns `NULL` if the path cannot be resolved.
-const char* get_executable_path();
-
 //
 int get_executable_path_buf(char *out, size_t outlen);
 

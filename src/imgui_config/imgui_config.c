@@ -39,7 +39,7 @@ ImFont* imgui_config_get_font(const font_type type) {
 }
 
 char* format_path(const char* format, const char* path) {
-    static char buffer[512];
+    static char buffer[PATH_MAX];
     snprintf(buffer, sizeof(buffer), format, path);
     return buffer;
 }
@@ -63,10 +63,11 @@ void load_fonts() {
     u_map_init(&s_font_map, 16, ptr_hash, ptr_compare);
     
     // Get base path (implementation specific - you'll need to implement this)
-    const char* base_path = get_executable_path();
-    char open_sans_path[PATH_MAX];
+    char base_path[PATH_MAX] = {0};
+    get_executable_path_buf(base_path, sizeof(base_path));
+    char open_sans_path[PATH_MAX *2] = {0};
     snprintf(open_sans_path, sizeof(open_sans_path), "%s/assets/fonts/Open_Sans/static", base_path);
-    char inconsolata_path[PATH_MAX];
+    char inconsolata_path[PATH_MAX *2] = {0};
     snprintf(inconsolata_path, sizeof(inconsolata_path), "%s/assets/fonts/Inconsolata/static", base_path);
         
     ImFont* font;

@@ -271,7 +271,10 @@ echo "Binary available at: ${{bin_dir}}/${{project_name}}"
         "release_with_debug_info": "RELEASE_WITH_DEBUG_INFO",
         "release": "RELEASE"
     }.get(build_config.lower(), None)
-    defines = ["PLATFORM_LINUX"]
+    defines = ["CIMGUI_DEFINE_ENUMS_AND_STRUCTS",
+                "IMGUI_DISABLE_OBSOLETE_FUNCTIONS",
+                "IMGUI_DISABLE_OBSOLETE_KEYIO",
+                "PLATFORM_LINUX"]
     if config_define:
         defines.append(config_define)
     defines.append("_POSIX_C_SOURCE=200809L")
