@@ -57,6 +57,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/${CONFIG_PLATFORM_DI
 find_package(OpenGL REQUIRED)
 
 # ------------------------------------------------------------------------------
+# Vendor project: stb-image
+# ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # Vendor project: GLFW (as submodule)
 # ------------------------------------------------------------------------------
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -172,6 +176,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cimgui
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cimgui/imgui
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/stb_image
     ${BACKENDS_DIR}
 )
 

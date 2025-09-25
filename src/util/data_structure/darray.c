@@ -6,11 +6,11 @@
 
 
 
-#define DARRAY_MAGIC 0xDEADBEEFDEADBEEF
+#define MAGIC 0xDEADBEEFDEADBEEF
 
 #define VALIDATE(d) \
     do { \
-        if (!(d) || (d)->magic != DARRAY_MAGIC) return AT_INVALID_ARGUMENT; \
+        if (!(d) || (d)->magic != MAGIC) return AT_INVALID_ARGUMENT; \
     } while (0)
 
 
@@ -30,7 +30,7 @@ i32 darray_init(darray* d, size_t element_size) {
 i32 darray_init_with_capacity(darray* d, size_t element_size, size_t initial_capacity) {
     
     if (!d || element_size == 0) return AT_INVALID_ARGUMENT;
-    if (d->magic == DARRAY_MAGIC) return AT_ALREADY_INITIALIZED;
+    if (d->magic == MAGIC) return AT_ALREADY_INITIALIZED;
     
     d->data = malloc(element_size * initial_capacity);
     if (!d->data) return AT_MEMORY_ERROR;
@@ -38,7 +38,7 @@ i32 darray_init_with_capacity(darray* d, size_t element_size, size_t initial_cap
     d->count = 0;
     d->capacity = initial_capacity;
     d->element_size = element_size;
-    d->magic = DARRAY_MAGIC;
+    d->magic = MAGIC;
     
     return AT_SUCCESS;
 }
@@ -77,13 +77,13 @@ i32 darray_get(const darray* d, size_t index, void* element) {
 
 
 size_t darray_size(const darray* d) {
-    if (!d || d->magic != DARRAY_MAGIC) return 0;
+    if (!d || d->magic != MAGIC) return 0;
     return d->count;
 }
 
 
 size_t darray_capacity(const darray* d) {
-    if (!d || d->magic != DARRAY_MAGIC) return 0;
+    if (!d || d->magic != MAGIC) return 0;
     return d->capacity;
 }
 

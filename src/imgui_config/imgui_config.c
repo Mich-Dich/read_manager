@@ -175,19 +175,16 @@ void imgui_end_frame(window_info* window_data) {
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(igGetDrawData());
 #ifdef IMGUI_HAS_DOCK
-    if (ioptr->ConfigFlags & ImGuiConfigFlags_ViewportsEnable) 
-    {
-    GLFWwindow *backup_current_window = glfwGetCurrentContext();
-    igUpdatePlatformWindows();
-    igRenderPlatformWindowsDefault(NULL, NULL);
-    glfwMakeContextCurrent(backup_current_window);
+    if (ioptr->ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+
+        GLFWwindow *backup_current_window = glfwGetCurrentContext();
+        igUpdatePlatformWindows();
+        igRenderPlatformWindowsDefault(NULL, NULL);
+        glfwMakeContextCurrent(backup_current_window);
     }
 #endif
-
-    glfwSwapBuffers(window_data->window_ptr);
 }
 
 
 ImVec4* imgui_config_get_clear_color_ptr() { return &s_clear_color; }
-
 

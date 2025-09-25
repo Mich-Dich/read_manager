@@ -104,7 +104,7 @@ b8 application_init(__attribute_maybe_unused__ int argc, __attribute_maybe_unuse
     } while (0);
 
     ASSERT(create_window(&app_state.window, 800, 600, display_name), "", "Failed to create window")
-    // ASSERT(renderer_init(&app_state.renderer), "", "Failed to initialize renderer")
+    ASSERT(renderer_init(&app_state.renderer), "", "Failed to initialize renderer")
     imgui_init(&app_state.window);
 
     dashboard_crash_callback = crash_handler_subscribe_callback(dashboard_on_crash);
@@ -119,7 +119,7 @@ void application_shutdown() {
     crash_handler_unsubscribe_callback(dashboard_crash_callback);
 
     imgui_shutdown();
-    // renderer_shutdown(&app_state.renderer);
+    renderer_shutdown(&app_state.renderer);
     destroy_window(&app_state.window);
     
     LOG_SHUTDOWN
@@ -156,11 +156,9 @@ void application_run() {
         
         dashboard_update(s_delta_time);
         
-        // renderer_begin_frame(&app_state.renderer);
-        imgui_begin_frame();
+        renderer_begin_frame(&app_state.renderer);
         dashboard_draw(s_delta_time);        
-        imgui_end_frame(&app_state.window);
-        // renderer_end_frame(&app_state.window);
+        renderer_end_frame(&app_state.window);
         
         limit_fps();                        // sets [s_delta_time]
     }

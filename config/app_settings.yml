@@ -4,4 +4,4 @@ general_settings:
   description: An application to manage the visual novels I read
   logo_path: assets/images/logo.png
   project_version: 0 0 0
-  long_startup_process: 1
+  long_startup_process: 0

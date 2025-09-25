@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include "util/io/logger.h"
 #include "util/UI/pannel_collection.h"
@@ -11,6 +12,7 @@
 #include "util/io/serializer_yaml.h"
 #include "util/system.h"
 #include "imgui_config/imgui_config.h"
+#include "render/image.h"
 
 #include "dashboard.h"
 
@@ -22,28 +24,31 @@
 
 // currently contains 104 tags (128 possible)
 typedef enum {
-    GT_ACTION, GT_ADVENTURE, GT_ARTBOOK, GT_CARTOON, GT_COMIC, GT_DOUJINSHI, GT_IMAGESET, GT_MANGA,
-    GT_MANHUA, GT_MANHWA,  GT_WESTERN, GT_ONESHOT, GT_FOURKOMA, GT_SHOUJO, GT_SHOUNEN, GT_JOSEI, 
-    GT_SEINEN,  GT_COMEDY, GT_COOKING, GT_CRIME, GT_CROSS_DRESSING, GT_CULTIVATION, GT_DEATH_GAME,
-    GT_OP_MC, GT_DEGENERATE_MC, GT_DELINQUENTS, GT_DEMENTIA, GT_DEMONS, GT_DRAMA, GT_FANTASY,
-    GT_FETISH, GT_GAME,  GT_GENDER_BENDER,  GT_GENDER_SWAP,  GT_GHOST,  GT_GYARU,  GT_HAREM, GT_HATLEQUIN, 
-    GT_HISTORY, GT_HORROR, GT_ISEKAI, GT_KIDS, GT_MAGIC, GT_MARTIAL_ARTS, GT_MASTER_SERVANT,  GT_MECHS,
-    GT_MEDICAL, GT_MILF, GT_MILITARY,  GT_MONSTER_GIRL,  GT_MONSTERS,  GT_MUSIC, GT_MYSTERY, GT_NINJA, 
-    GT_OFFICE_WORKERS, GT_OMEGAVERSE, GT_PARODY, GT_PHILOSOPHICAL, GT_POLICE, GT_POST_APOCALYPTIC,
-    GT_PSYCHOLOGICAL,  GT_REINCARNATION,  GT_REVERSE_HAREM,  GT_ROMANCE,  GT_SAMURAI,  GT_SCHOOL_LIFE,  GT_SCI_FI, 
-    GT_SHOUJOAI, GT_SHOUNENAI, GT_SHOWBIZ, GT_SLICE_OF_LIFE, GT_SPACE, GT_SPORTS, GT_STEPFAMILY, GT_SUPERPOWER,
-    GT_SUPERHERO,  GT_SUPERNATURAL,  GT_SURVIVAL,  GT_TEACHER_STUDENTS,  GT_THRILLER,  GT_TIME_TRAVEL,  GT_TRAGEDY, 
-    GT_VAMPIRES, GT_VILLAINESS,  GT_VIRTUAL_REALITY,  GT_WUXIA,  GT_XIANXIA, GT_XUANHUAN, GT_ZOMBIES,  
-    
-    // NSFW tags
-    GT_GORE, GT_BLOODY, GT_VIOLENCE, GT_ADULT, GT_MATURE, GT_SMUT, GT_ECCHI, GT_NTR, GT_INCEST, 
-    GT_LOLI, GT_SHOTA, GT_FUTA, GT_BARA, GT_YAOI, GT_YURI
-} genre_tag;
+GT_ACTION, GT_ADVENTURE, GT_ARTBOOK, GT_CARTOON, GT_COMIC, GT_DOUJINSHI, GT_IMAGESET, GT_MANGA,
+GT_MANHUA, GT_MANHWA, GT_WESTERN, GT_ONESHOT, GT_FOURKOMA, GT_SHOUJO, GT_SHOUNEN, GT_JOSEI, 
+GT_SEINEN, GT_COMEDY, GT_COOKING, GT_CRIME, GT_CROSS_DRESSING, GT_CULTIVATION, GT_DEATH_GAME,
+GT_OP_MC, GT_DEGENERATE_MC, GT_DELINQUENTS, GT_DEMENTIA, GT_DEMONS, GT_DRAMA, GT_FANTASY,
+GT_FETISH, GT_GAME, GT_GENDER_BENDER, GT_GENDER_SWAP, GT_GHOST, GT_GYARU, GT_HAREM, GT_HATLEQUIN, 
+GT_HISTORY, GT_HORROR, GT_ISEKAI, GT_KIDS, GT_MAGIC, GT_MARTIAL_ARTS, GT_MASTER_SERVANT, GT_MECHS,
+GT_MEDICAL, GT_MILF, GT_MILITARY, GT_MONSTER_GIRL, GT_MONSTERS, GT_MUSIC, GT_MYSTERY, GT_NINJA, 
+GT_OFFICE_WORKERS, GT_OMEGAVERSE, GT_PARODY, GT_PHILOSOPHICAL, GT_POLICE, GT_POST_APOCALYPTIC,
+GT_PSYCHOLOGICAL, GT_REINCARNATION, GT_REVERSE_HAREM, GT_ROMANCE,
+} genre_tag_lo;
 
-const char* genre_tag_to_str(const genre_tag type) {
+typedef enum {
+GT_SAMURAI, GT_SCHOOL_LIFE, GT_SCI_FI, GT_SHOUJOAI, GT_SHOUNENAI, GT_SHOWBIZ, GT_SLICE_OF_LIFE, GT_SPACE, 
+GT_SPORTS, GT_STEPFAMILY, GT_SUPERPOWER, GT_SUPERHERO, GT_SUPERNATURAL, GT_SURVIVAL, GT_TEACHER_STUDENTS,
+GT_THRILLER, GT_TIME_TRAVEL, GT_TRAGEDY, GT_VAMPIRES, GT_VILLAINESS, GT_VIRTUAL_REALITY, 
+GT_WUXIA, GT_XIANXIA, GT_XUANHUAN, GT_ZOMBIES, 
+
+// NSFW tags
+GT_GORE, GT_BLOODY, GT_VIOLENCE, GT_ADULT, GT_MATURE, GT_SMUT, GT_ECCHI, GT_NTR, GT_INCEST, 
+GT_LOLI, GT_SHOTA, GT_FUTA, GT_BARA, GT_YAOI, GT_YURI
+} genre_tag_hi;
+
+const char* genre_tag_lo_to_str(const genre_tag_lo type) {
 
     switch (type) {
-
         case GT_ACTION:                 return "action";
         case GT_ADVENTURE:              return "adventure";
         case GT_ARTBOOK:                return "artbook";
@@ -108,6 +113,13 @@ const char* genre_tag_to_str(const genre_tag type) {
         case GT_REINCARNATION:          return "reincarnation";
         case GT_REVERSE_HAREM:          return "revers eharem";
         case GT_ROMANCE:                return "romance";
+        default:                        return "unknown";
+    }
+}
+
+const char* genre_tag_hi_to_str(const genre_tag_hi type) {
+
+    switch (type) {
         case GT_SAMURAI:                return "samurai";
         case GT_SCHOOL_LIFE:            return "school life";
         case GT_SCI_FI:                 return "sci-fi";
@@ -152,16 +164,19 @@ const char* genre_tag_to_str(const genre_tag type) {
     }
 }
 
-#define GENRE_BIT(tag) (((u128)1) << (tag))
+#define GENRE_BIT(tag) (((u64)1) << (tag))
 
 // set a genre
-static inline void add_genre(u128 *flags, genre_tag tag)        { *flags |= GENRE_BIT(tag); }
+static inline void add_genre_lo(u64 *flags, genre_tag_lo tag)        { *flags |= GENRE_BIT(tag); }
+static inline void add_genre_hi(u64 *flags, genre_tag_hi tag)        { *flags |= GENRE_BIT(tag); }
 
 // clear a genre
-static inline void remove_genre(u128 *flags, genre_tag tag)     { *flags &= ~GENRE_BIT(tag); }
+static inline void remove_genre_lo(u64 *flags, genre_tag_lo tag)     { *flags &= ~GENRE_BIT(tag); }
+static inline void remove_genre_hi(u64 *flags, genre_tag_hi tag)     { *flags &= ~GENRE_BIT(tag); }
 
 // test a genre
-static inline bool has_genre(u128 flags, genre_tag tag)         { return (flags & GENRE_BIT(tag)) != 0; }
+static inline bool has_genre_lo(u64 flags, genre_tag_lo tag)         { return (flags & GENRE_BIT(tag)) != 0; }
+static inline bool has_genre_hi(u64 flags, genre_tag_hi tag)         { return (flags & GENRE_BIT(tag)) != 0; }
 
 
 typedef enum {
@@ -177,14 +192,14 @@ typedef enum {
 const char* discontinue_reason_to_str(const discontinue_reason type) {
 
     switch (type) {
-        case DR_READ_ALL_CHAPTERS:      return "read all chapters";
-        case DR_FINISHED:               return "finished";
-        case DR_GOT_BORED:              return "got bored";
-        case DR_AUTHOR_HIATUS:          return "author hiatus";
-        case DR_DROPPED_BY_TRANSLATOR:  return "dropped by translator";
-        case DR_POOR_TRANSLATION:       return "poor translation";
-        case DR_DECLINE_IN_QUALITY:     return "decline in quality";
-        default:                        return "unknown";
+        case DR_READ_ALL_CHAPTERS:      { return "read all chapters"; }
+        case DR_FINISHED:               { return "finished"; }
+        case DR_GOT_BORED:              { return "got bored"; }
+        case DR_AUTHOR_HIATUS:          { return "author hiatus"; }
+        case DR_DROPPED_BY_TRANSLATOR:  { return "dropped by translator"; }
+        case DR_POOR_TRANSLATION:       { return "poor translation"; }
+        case DR_DECLINE_IN_QUALITY:     { return "decline in quality"; }
+        default:                        { return "unknown"; }
     }
 }
 
@@ -254,7 +269,7 @@ b8 dashboard_init() {
         .rating = 9,
         .disc_reason = DR_FINISHED,
         .flags_lo = (1ULL << GT_ROMANCE) | (1ULL << GT_SCHOOL_LIFE) | (1ULL << GT_DRAMA),
-        .flags_hi = (1ULL << (GT_YURI - 64))  // Assuming 64 is the cutoff between flags_lo and flags_hi
+        .flags_hi = (1ULL << GT_YURI)  // Assuming 64 is the cutoff between flags_lo and flags_hi
     };
 
     visual_novel vn1 = {
@@ -266,7 +281,7 @@ b8 dashboard_init() {
         .rating = 7,
         .disc_reason = DR_GOT_BORED,
         .flags_lo = (1ULL << GT_SCI_FI) | (1ULL << GT_ACTION) | (1ULL << GT_PSYCHOLOGICAL),
-        .flags_hi = (1ULL << (GT_GORE - 64)) | (1ULL << (GT_VIOLENCE - 64))
+        .flags_hi = (1ULL << GT_GORE) | (1ULL << GT_VIOLENCE)
     };
 
     visual_novel vn2 = {
@@ -278,7 +293,7 @@ b8 dashboard_init() {
         .rating = 10,
         .disc_reason = DR_FINISHED,
         .flags_lo = (1ULL << GT_FANTASY) | (1ULL << GT_SUPERNATURAL) | (1ULL << GT_VAMPIRES) | (1ULL << GT_ROMANCE),
-        .flags_hi = (1ULL << (GT_ADULT - 64)) | (1ULL << (GT_MATURE - 64))
+        .flags_hi = (1ULL << GT_ADULT) | (1ULL << GT_MATURE)
     };
 
     visual_novel vn3 = {
@@ -290,7 +305,7 @@ b8 dashboard_init() {
         .rating = 6,
         .disc_reason = DR_POOR_TRANSLATION,
         .flags_lo = (1ULL << GT_SCHOOL_LIFE) | (1ULL << GT_COMEDY) | (1ULL << GT_SLICE_OF_LIFE) | (1ULL << GT_HAREM),
-        .flags_hi = (1ULL << (GT_ECCHI - 64))
+        .flags_hi = (1ULL << GT_ECCHI)
     };
 
     // Add them to the array
@@ -302,7 +317,7 @@ b8 dashboard_init() {
 
     sy_shutdown(&sy);
 
-    sleep(3);
+    // sleep(3);
     return true;
 }
 
@@ -330,10 +345,9 @@ void draw_card(visual_novel* vn) {
     
     // Calculate card size
     float card_width = 300.0f;
-    float card_height = 200.0f;
+    float card_height = 300.0f;
     
-    igBeginChild_Str(vn->name, (ImVec2){card_width, card_height}, true, 
-                    ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    igBeginChild_Str(vn->name, (ImVec2){card_width, card_height}, true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
     {
         // Card header with title
         igPushFont(imgui_config_get_font(FT_HEADER_2), g_font_size_header_2);
@@ -348,16 +362,7 @@ void draw_card(visual_novel* vn) {
         igProgressBar(progress, (ImVec2){-FLT_MIN, 0}, NULL);
         
         // Rating (as stars)
-        igText("Rating: ");
-        igSameLine(0, 4);
-        for (int i = 0; i < 10; i++) {
-            if (i < vn->rating) {
-                igText("★");
-            } else {
-                igText("☆");
-            }
-            if (i < 9) igSameLine(0, 2);
-        }
+        igText("Rating: %d", vn->rating);
         
         // Status
         igText("Status: %s", discontinue_reason_to_str(vn->disc_reason));
@@ -366,37 +371,26 @@ void draw_card(visual_novel* vn) {
         igText("Tags: ");
         igSameLine(0, 4);
         
-        int tags_shown = 0;
-        const int max_tags_to_show = 3;
-        
-        // Helper function to check and display tags
-        #define CHECK_AND_SHOW_TAG(tag) \
-            if (has_genre((((u128)vn->flags_hi) << 64) | vn->flags_lo, tag) && tags_shown < max_tags_to_show) { \
-                igText("%s", genre_tag_to_str(tag)); \
-                tags_shown++; \
-                if (tags_shown < max_tags_to_show) igSameLine(0, 4); \
-            }
-        
-        // Check some common tags
-        CHECK_AND_SHOW_TAG(GT_ROMANCE);
-        CHECK_AND_SHOW_TAG(GT_COMEDY);
-        CHECK_AND_SHOW_TAG(GT_DRAMA);
-        CHECK_AND_SHOW_TAG(GT_FANTASY);
-        CHECK_AND_SHOW_TAG(GT_SCI_FI);
-        CHECK_AND_SHOW_TAG(GT_SCHOOL_LIFE);
-        CHECK_AND_SHOW_TAG(GT_HAREM);
-        CHECK_AND_SHOW_TAG(GT_ACTION);
-        
-        if (tags_shown == max_tags_to_show) {
-            igSameLine(0, 4);
-            igText("...");
-        }
+
+        // bool line_full = false;
+        // for (u8 x = 0; x < 64; x++) {
+
+        //     if ( (vn->flags_lo >> x) & 1 ) {
+    
+        //         const char* genre_tag_lo_to_str((genre_tag_lo)vn->flags_lo);
+        //         igText("...");
+        //         // line_full = ;
+        //     }
+
+        //     if (line_full)
+        //         break;
+
+        // }
+
         
         #undef CHECK_AND_SHOW_TAG
         
-        // Link (clickable)
         if (igButton("Open Link", (ImVec2){-FLT_MIN, 0})) {
-            // You could implement opening the link here
             LOG(Info, "Opening link: %s", vn->link);
         }
     }
@@ -441,17 +435,65 @@ void dashboard_draw(__attribute_maybe_unused__ const f32 delta_time) {
     igSameLine(0, 0);
     igSetCursorPosX(igGetCursorPosX() + 10);
     
-    igBeginChild_Str("##content", (ImVec2){0, 0}, false, 0);                    // Main content area (fills remaining space)
+
+    igBeginChild_Str("##content", (ImVec2){0, 0}, false, 0);
     {
-        // Restore padding for main content
-        igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){8, 8});
+        igPushStyleVar_Vec2(ImGuiStyleVar_WindowPadding, (ImVec2){16, 16});
+        igPushStyleVar_Vec2(ImGuiStyleVar_ItemSpacing, (ImVec2){16, 16});
         
-        // Add your main content here
-        igText("Main Content Area", 0);
+        // Header
+        igPushFont(imgui_config_get_font(FT_GIANT), g_font_size_giant);
+        igText("Visual Novels Collection");
+        igPopFont();
+        
         igSeparator();
-        igText("Content goes here", 0);
+        igSpacing();
+
+    #if 0
+        // Cards grid
+        size_t novel_count = darray_size(&visual_novels);
+        if (novel_count > 0) {
+            // Calculate how many cards per row based on available width
+            float available_width = igGetWindowWidth();
+            float card_width = 300.0f;
+            float spacing = 16.0f;
+            int cards_per_row = (int)(available_width / (card_width + spacing));
+            if (cards_per_row < 1) cards_per_row = 1;
+            
+            int current_card = 0;
+            for (size_t i = 0; i < novel_count; i++) {
+                visual_novel vn = {0};
+                darray_get(&visual_novels, i, &vn);
+                    if (current_card > 0 && current_card % cards_per_row != 0) {
+                        igSameLine(0, spacing);
+                    }
+                    draw_card(&vn);
+                    current_card++;
+            }
+        } else
+            igText("No visual novels added yet.");
+    #else
         
-        igPopStyleVar(1);
+        // TODO: display a test image at [<get_executable_path()>/images/test_image.png]
+
+        ImVec2 image_size = {80, 120};
+        static image_t test_image = {0};
+        if (test_image.magic == 0) {
+
+            char exe_path[1024] = {0};
+            get_executable_path_buf(exe_path, sizeof(exe_path));
+            char image_path[2048] = {0};
+            snprintf(image_path, sizeof(image_path), "%s/assets/images/test_image.png", exe_path);
+            LOG(Trace, "Image at [%s]", image_path)
+            VALIDATE(image_create_from_file(&test_image, image_path, IF_RGBA, false), , "", "Failed to create image");
+        }
+        
+        igImage(image_get_texture_id(&test_image), image_size, (ImVec2){0,0}, (ImVec2){1,1});
+
+
+    #endif
+        
+        igPopStyleVar(2);
     }
     igEndChild();
     
